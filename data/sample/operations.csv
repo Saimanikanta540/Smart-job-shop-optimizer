@@ -1,0 +1,16 @@
+operation_id,job_id,sequence,machine_id,processing_time
+O1,J1,1,M1,2
+O2,J1,2,M2,1
+O3,J1,3,M3,2
+O4,J2,1,M1,3
+O5,J2,2,M2,2
+O6,J2,3,M3,1
+O7,J3,1,M1,2
+O8,J3,2,M2,2
+O9,J3,3,M3,2
+O10,J4,1,M1,3
+O11,J4,2,M2,2
+O12,J4,3,M3,2
+O13,J5,1,M1,2
+O14,J5,2,M2,1
+O15,J5,3,M3,2
