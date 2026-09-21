@@ -1,0 +1,4 @@
+machine_id,machine_name,machine_type
+M1,CNC_01,CNC
+M2,DRILL_01,Drilling
+M3,GRIND_01,Grinding
