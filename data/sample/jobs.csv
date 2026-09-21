@@ -1,0 +1,6 @@
+job_id,product,quantity,priority,deadline
+J1,Gear,100,High,2026-09-25
+J2,Gear,150,Medium,2026-09-25
+J3,Shaft,100,High,2026-09-26
+J4,Shaft,200,Low,2026-09-27
+J5,Gear,100,Medium,2026-09-27
