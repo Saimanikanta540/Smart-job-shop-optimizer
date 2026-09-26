@@ -3,8 +3,6 @@ import pandas as pd
 
 DATA_PATH = "data/sample/mobile"
 
-
-
 def load_data():
     machines = pd.read_csv(f"{DATA_PATH}/machines.csv")
     jobs = pd.read_csv(f"{DATA_PATH}/jobs.csv")
