@@ -1,7 +1,8 @@
 import pandas as pd
 
 
-DATA_PATH = "data/sample"
+DATA_PATH = "data/sample/mobile"
+
 
 
 def load_data():
