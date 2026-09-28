@@ -17,13 +17,14 @@ def create_schedule():
     # 1. LOAD DATA
     # =========================================================
 
-    machines, jobs, operations, maintenance = load_data()
+    machines, jobs, operations, maintenance, disruptions = load_data()
 
     print("\n========== INPUT DATA ==========")
     print(f"Jobs       : {len(jobs)}")
     print(f"Machines   : {len(machines)}")
     print(f"Operations : {len(operations)}")
     print(f"Maintenance: {len(maintenance)}")
+    print(f"Disruptions: {len(disruptions)}")
 
     # =========================================================
     # 2. CREATE CP-SAT MODEL
@@ -251,7 +252,60 @@ def create_schedule():
                 before_maintenance,
                 after_maintenance
             )
-        
+    # =========================================================
+    # 9. MACHINE DISRUPTION CONSTRAINTS
+    # =========================================================
+
+    for _, disruption_row in disruptions.iterrows():
+
+        machine_id = disruption_row["machine_id"]
+
+        disruption_start = int(
+            disruption_row["start_time"]
+        )
+
+        disruption_end = int(
+            disruption_row["end_time"]
+        )
+
+        machine_operations = operations[
+            operations["machine_id"] == machine_id
+        ]
+
+        for _, operation in machine_operations.iterrows():
+
+            operation_id = operation["operation_id"]
+
+            before_disruption = model.NewBoolVar(
+                f"{operation_id}_before_disruption"
+            )
+
+            after_disruption = model.NewBoolVar(
+                f"{operation_id}_after_disruption"
+            )
+
+            # Operation must finish before disruption
+            model.Add(
+                end_vars[operation_id]
+                <= disruption_start
+            ).OnlyEnforceIf(
+                before_disruption
+            )
+
+            # OR operation must start after disruption
+            model.Add(
+                start_vars[operation_id]
+                >= disruption_end
+            ).OnlyEnforceIf(
+                after_disruption
+            )
+
+            # Exactly one possibility must be true
+            model.AddExactlyOne(
+                before_disruption,
+                after_disruption
+            )
+            
         # =========================================================
         # 9. MAKESPAN
         # =========================================================
@@ -379,7 +433,8 @@ def create_schedule():
     validate_schedule(
         schedule,
         solver.Value(makespan),
-        maintenance
+        maintenance,
+        disruptions
     )
 
     return schedule
@@ -400,7 +455,7 @@ def is_inside_working_window(start, end):
 # VALIDATION FUNCTION
 # =============================================================
 
-def validate_schedule(schedule, makespan, maintenance):
+def validate_schedule(schedule, makespan, maintenance,disruptions):
 
     print(
         "\n========== SCHEDULE VALIDATION ==========\n"
@@ -640,6 +695,51 @@ def validate_schedule(schedule, makespan, maintenance):
         print(
             "✓ Machine maintenance constraints are respected"
         ) 
+    
+    # =========================================================
+    # CHECK 7 — MACHINE DISRUPTION
+    # =========================================================
+
+    disruption_valid = True
+
+    for disruption_row in disruptions.itertuples():
+
+        machine_id = disruption_row.machine_id
+
+        disruption_start = int(
+            disruption_row.start_time
+        )
+
+        disruption_end = int(
+            disruption_row.end_time
+        )
+
+        for operation in schedule:
+
+            if operation["machine_id"] != machine_id:
+                continue
+
+            # Check whether operation overlaps disruption
+            if (
+                operation["start"] < disruption_end
+                and operation["end"] > disruption_start
+            ):
+
+                print(
+                    f"❌ Disruption violation: "
+                    f"{operation['operation_id']} "
+                    f"on {machine_id} overlaps "
+                    f"{disruption_start}-{disruption_end}"
+                )
+
+                disruption_valid = False
+                valid = False
+
+    if disruption_valid:
+
+        print(
+            "✓ Machine disruption constraints are respected"
+        )
 
     # =========================================================
     # FINAL RESULT

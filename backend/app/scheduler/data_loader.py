@@ -8,12 +8,12 @@ def load_data():
     jobs = pd.read_csv(f"{DATA_PATH}/jobs.csv")
     operations = pd.read_csv(f"{DATA_PATH}/operations.csv")
     maintenance = pd.read_csv(f"{DATA_PATH}/maintenance.csv")
-
-    return machines, jobs, operations, maintenance
+    disruptions = pd.read_csv(f"{DATA_PATH}/disruptions.csv")
+    return machines, jobs, operations, maintenance, disruptions
 
 
 if __name__ == "__main__":
-    machines, jobs, operations, maintenance = load_data()
+    machines, jobs, operations, maintenance, disruptions = load_data()
 
     print("\nMachines:")
     print(machines)
@@ -26,3 +26,6 @@ if __name__ == "__main__":
 
     print("\nMaintenance:")
     print(maintenance)
+
+    print("\nDisruptions:")
+    print(disruptions)
