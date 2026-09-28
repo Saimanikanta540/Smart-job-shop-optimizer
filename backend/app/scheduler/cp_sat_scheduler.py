@@ -2,6 +2,14 @@ from ortools.sat.python import cp_model
 
 from data_loader import load_data
 
+# =========================================================
+# FACTORY CALENDAR
+# =========================================================
+
+WORKING_WINDOWS = [
+    (0, 300),      # 08:00 - 13:00
+    (360, 540)     # 14:00 - 17:00
+]
 
 def create_schedule():
 
@@ -24,13 +32,11 @@ def create_schedule():
     model = cp_model.CpModel()
 
 
-    # =========================================================
+   # =========================================================
     # 3. CALCULATE TIME HORIZON
     # =========================================================
 
-    horizon = int(
-        operations["processing_time"].sum()
-    )
+    horizon = 540
 
     print(f"Time Horizon: {horizon}")
 
@@ -42,7 +48,6 @@ def create_schedule():
     start_vars = {}
     end_vars = {}
     interval_vars = {}
-
 
     # =========================================================
     # 5. CREATE VARIABLES FOR EVERY OPERATION
@@ -56,6 +61,10 @@ def create_schedule():
             operation["processing_time"]
         )
 
+        # -----------------------------------------------------
+        # Main start/end variables
+        # -----------------------------------------------------
+
         start = model.NewIntVar(
             0,
             horizon,
@@ -68,17 +77,63 @@ def create_schedule():
             f"end_{operation_id}"
         )
 
-        interval = model.NewIntervalVar(
-            start,
-            duration,
-            end,
-            f"interval_{operation_id}"
-        )
-
         start_vars[operation_id] = start
         end_vars[operation_id] = end
-        interval_vars[operation_id] = interval
 
+
+        # -----------------------------------------------------
+        # Calendar window alternatives
+        # -----------------------------------------------------
+
+        window_intervals = []
+        window_presence = []
+
+        for window_index, (window_start, window_end) in enumerate(
+            WORKING_WINDOWS
+        ):
+
+            # This operation cannot fit in this window.
+            if duration > (window_end - window_start):
+                continue
+
+            presence = model.NewBoolVar(
+                f"{operation_id}_window_{window_index}"
+            )
+
+            interval = model.NewOptionalIntervalVar(
+                start,
+                duration,
+                end,
+                presence,
+                f"{operation_id}_interval_{window_index}"
+            )
+
+            # If this window is selected:
+            #
+            # start >= window_start
+            # end <= window_end
+
+            model.Add(
+                start >= window_start
+            ).OnlyEnforceIf(presence)
+
+            model.Add(
+                end <= window_end
+            ).OnlyEnforceIf(presence)
+
+            window_intervals.append(interval)
+            window_presence.append(presence)
+
+
+        # -----------------------------------------------------
+        # Exactly one working window must be selected
+        # -----------------------------------------------------
+
+        model.AddExactlyOne(
+            window_presence
+        )
+
+        interval_vars[operation_id] = window_intervals
 
     # =========================================================
     # 6. JOB PRECEDENCE CONSTRAINTS
@@ -121,7 +176,7 @@ def create_schedule():
 
             operation_id = operation["operation_id"]
 
-            machine_intervals.append(
+            machine_intervals.extend(
                 interval_vars[operation_id]
             )
 
@@ -260,7 +315,18 @@ def create_schedule():
     )
 
     return schedule
+# =============================================================
+# CALENDAR VALIDATION HELPER
+# =============================================================
 
+def is_inside_working_window(start, end):
+
+    for window_start, window_end in WORKING_WINDOWS:
+
+        if start >= window_start and end <= window_end:
+            return True
+
+    return False
 
 # =============================================================
 # VALIDATION FUNCTION
@@ -432,6 +498,35 @@ def validate_schedule(schedule, makespan):
 
         valid = False
 
+    # =========================================================
+    # CHECK 5 — WORKING HOURS / BREAKS
+    # =========================================================
+
+    calendar_valid = True
+
+    for operation in schedule:
+
+        if not is_inside_working_window(
+            operation["start"],
+            operation["end"]
+        ):
+
+            print(
+                f"❌ Calendar violation: "
+                f"{operation['operation_id']} "
+                f"runs from "
+                f"{operation['start']} to "
+                f"{operation['end']}"
+            )
+
+            calendar_valid = False
+            valid = False
+
+    if calendar_valid:
+
+        print(
+            "✓ Working hours and breaks are respected"
+        )
 
     # =========================================================
     # FINAL RESULT
