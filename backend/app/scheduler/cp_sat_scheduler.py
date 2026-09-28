@@ -17,13 +17,13 @@ def create_schedule():
     # 1. LOAD DATA
     # =========================================================
 
-    machines, jobs, operations = load_data()
+    machines, jobs, operations, maintenance = load_data()
 
     print("\n========== INPUT DATA ==========")
     print(f"Jobs       : {len(jobs)}")
     print(f"Machines   : {len(machines)}")
     print(f"Operations : {len(operations)}")
-
+    print(f"Maintenance: {len(maintenance)}")
 
     # =========================================================
     # 2. CREATE CP-SAT MODEL
@@ -184,22 +184,89 @@ def create_schedule():
             machine_intervals
         )
 
-
     # =========================================================
-    # 8. MAKESPAN
+    # 8. MACHINE MAINTENANCE CONSTRAINTS
     # =========================================================
 
-    makespan = model.NewIntVar(
-        0,
-        horizon,
-        "makespan"
-    )
+    for _, maintenance_row in maintenance.iterrows():
 
-    for operation_id in end_vars:
+        machine_id = maintenance_row["machine_id"]
 
-        model.Add(
-            makespan >= end_vars[operation_id]
+        maintenance_start = int(
+            maintenance_row["start_time"]
         )
+
+        maintenance_end = int(
+            maintenance_row["end_time"]
+        )
+
+        # Find all operations assigned to this machine
+        machine_operations = operations[
+            operations["machine_id"] == machine_id
+        ]
+
+        for _, operation in machine_operations.iterrows():
+
+            operation_id = operation["operation_id"]
+
+            # -------------------------------------------------
+            # Operation must be BEFORE or AFTER maintenance
+            # -------------------------------------------------
+
+            before_maintenance = model.NewBoolVar(
+                f"{operation_id}_before_maintenance"
+            )
+
+            after_maintenance = model.NewBoolVar(
+                f"{operation_id}_after_maintenance"
+            )
+
+            # -------------------------------------------------
+            # OPTION 1: Operation finishes before maintenance
+            # -------------------------------------------------
+
+            model.Add(
+                end_vars[operation_id]
+                <= maintenance_start
+            ).OnlyEnforceIf(
+                before_maintenance
+            )
+
+            # -------------------------------------------------
+            # OPTION 2: Operation starts after maintenance
+            # -------------------------------------------------
+
+            model.Add(
+                start_vars[operation_id]
+                >= maintenance_end
+            ).OnlyEnforceIf(
+                after_maintenance
+            )
+
+            # -------------------------------------------------
+            # Exactly one option must be selected
+            # -------------------------------------------------
+
+            model.AddExactlyOne(
+                before_maintenance,
+                after_maintenance
+            )
+        
+        # =========================================================
+        # 9. MAKESPAN
+        # =========================================================
+
+        makespan = model.NewIntVar(
+            0,
+            horizon,
+            "makespan"
+        )
+
+        for operation_id in end_vars:
+
+            model.Add(
+                makespan >= end_vars[operation_id]
+            )
 
 
     # =========================================================
@@ -311,7 +378,8 @@ def create_schedule():
 
     validate_schedule(
         schedule,
-        solver.Value(makespan)
+        solver.Value(makespan),
+        maintenance
     )
 
     return schedule
@@ -332,7 +400,7 @@ def is_inside_working_window(start, end):
 # VALIDATION FUNCTION
 # =============================================================
 
-def validate_schedule(schedule, makespan):
+def validate_schedule(schedule, makespan, maintenance):
 
     print(
         "\n========== SCHEDULE VALIDATION ==========\n"
@@ -527,6 +595,51 @@ def validate_schedule(schedule, makespan):
         print(
             "✓ Working hours and breaks are respected"
         )
+
+    # =========================================================
+    # CHECK 6 — MACHINE MAINTENANCE
+    # =========================================================
+
+    maintenance_valid = True
+
+    for maintenance_row in maintenance.itertuples():
+
+        machine_id = maintenance_row.machine_id
+        maintenance_start = int(
+            maintenance_row.start_time
+        )
+        maintenance_end = int(
+            maintenance_row.end_time
+        )
+
+        for operation in schedule:
+
+            if operation["machine_id"] != machine_id:
+                continue
+
+            # Check whether operation overlaps maintenance
+            if (
+                operation["start"] < maintenance_end
+                and
+                operation["end"] > maintenance_start
+            ):
+
+                print(
+                    f"❌ Maintenance violation: "
+                    f"{operation['operation_id']} "
+                    f"on {machine_id} overlaps "
+                    f"{maintenance_start}-{maintenance_end}"
+                )
+
+                maintenance_valid = False
+                valid = False
+
+
+    if maintenance_valid:
+
+        print(
+            "✓ Machine maintenance constraints are respected"
+        ) 
 
     # =========================================================
     # FINAL RESULT
