@@ -4,7 +4,7 @@ A smart optimizer for job shop scheduling.
 
 ## Overview
 
-This repository contains the code for the Smart Job Shop Optimizer, a backend system utilizing FastAPI and Google's OR-Tools (CP-SAT solver) to schedule jobs on machines based on operations.
+This repository contains the code for the Smart Job Shop Optimizer, a backend system utilizing FastAPI, Google's OR-Tools (CP-SAT solver) to schedule jobs on machines based on operations, and SimPy for discrete-event factory simulation.
 
 ## Backend Setup Instructions
 
@@ -34,9 +34,16 @@ This repository contains the code for the Smart Job Shop Optimizer, a backend sy
    uvicorn app.main:app --reload
    ```
 
-### Running the Scheduler independently
-If you want to run the data loader or the CP-SAT scheduler directly:
+### Running Modules Independently
+
+**CP-SAT Scheduler**:
 ```bash
 # Ensure you are in the project root so it can find data/sample/
 ./backend/venv/Scripts/python backend/app/scheduler/cp_sat_scheduler.py
+```
+
+**Factory Simulation (SimPy)**:
+```bash
+# Ensure you are in the project root
+./backend/venv/Scripts/python backend/app/simulation/factory_simulation.py
 ```
