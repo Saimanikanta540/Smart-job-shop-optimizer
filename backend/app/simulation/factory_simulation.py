@@ -16,6 +16,11 @@ sys.path.insert(0, SCHEDULER_DIR)
 
 from scheduler.cp_sat_scheduler import create_schedule
 
+simulation_results = {
+    "operations": [],
+    "machine_busy_time": {},
+}
+
 def create_environment():
     """
     Create and return a SimPy simulation environment.
@@ -68,11 +73,15 @@ def process_operation(env, machines, job_id, operation_id, machine_id, duration)
             f"Time {env.now}: "
             f"{job_id}/{operation_id} finished on {machine_id}"
         )   
-def run_scheduled_operation(env,machines,job_id,operation_id,machine_id,scheduled_start,duration):
-    """
-    Execute one operation according to the CP-SAT schedule.
-    """
-
+def run_scheduled_operation(
+    env,
+    machines,
+    job_id,
+    operation_id,
+    machine_id,
+    scheduled_start,
+    duration
+):
     # Wait until the scheduled start time
     if env.now < scheduled_start:
         yield env.timeout(scheduled_start - env.now)
@@ -84,8 +93,10 @@ def run_scheduled_operation(env,machines,job_id,operation_id,machine_id,schedule
         f"{job_id}/{operation_id} waiting for {machine_id}"
     )
 
-    with machine.request() as request:
+    # Request machine
+    request_time = env.now
 
+    with machine.request() as request:
         yield request
 
         actual_start = env.now
@@ -95,6 +106,7 @@ def run_scheduled_operation(env,machines,job_id,operation_id,machine_id,schedule
             f"{job_id}/{operation_id} started on {machine_id}"
         )
 
+        # Execute operation
         yield env.timeout(duration)
 
         actual_end = env.now
@@ -102,7 +114,29 @@ def run_scheduled_operation(env,machines,job_id,operation_id,machine_id,schedule
         print(
             f"Time {actual_end}: "
             f"{job_id}/{operation_id} finished on {machine_id}"
-        ) 
+        )
+
+    # Calculate waiting time
+    waiting_time = actual_start - request_time
+
+    # Store operation result
+    simulation_results["operations"].append({
+        "job_id": job_id,
+        "operation_id": operation_id,
+        "machine_id": machine_id,
+        "scheduled_start": scheduled_start,
+        "actual_start": actual_start,
+        "actual_end": actual_end,
+        "processing_time": duration,
+        "waiting_time": waiting_time
+    })
+
+    # Add machine busy time
+    if machine_id not in simulation_results["machine_busy_time"]:
+        simulation_results["machine_busy_time"][machine_id] = 0
+
+    simulation_results["machine_busy_time"][machine_id] += duration
+
 def simulate_schedule(env, machines, schedule):
     """
     Simulate all operations from the CP-SAT schedule.
@@ -120,6 +154,82 @@ def simulate_schedule(env, machines, schedule):
                 operation["start"],
                 operation["processing_time"]
             )
+        )
+    
+def calculate_simulation_results():
+    operations = simulation_results["operations"]
+
+    if not operations:
+        print("❌ No simulation results available.")
+        return
+
+    # Total operations
+    total_operations = len(operations)
+
+    # Completed operations
+    completed_operations = sum(
+        1 for op in operations
+        if op["actual_end"] is not None
+    )
+
+    # Simulation makespan
+    simulation_makespan = max(
+        op["actual_end"] for op in operations
+    )
+
+    # Total processing time
+    total_processing_time = sum(
+        op["processing_time"] for op in operations
+    )
+
+    # Total waiting time
+    total_waiting_time = sum(
+        op["waiting_time"] for op in operations
+    )
+
+    print("\n========== SIMULATION RESULTS ==========")
+
+    print(f"Total Operations     : {total_operations}")
+    print(f"Completed Operations : {completed_operations}")
+    print(f"Simulation Makespan  : {simulation_makespan}")
+    print(f"Total Processing Time: {total_processing_time}")
+    print(f"Total Waiting Time   : {total_waiting_time}")
+
+    # Machine utilization
+    print("\nMachine Utilization:")
+
+    for machine_id, busy_time in sorted(
+        simulation_results["machine_busy_time"].items()
+    ):
+        utilization = (
+            busy_time / simulation_makespan
+        ) * 100
+
+        print(
+            f"{machine_id} : "
+            f"{utilization:.2f}% "
+            f"(Busy: {busy_time})"
+        )
+
+    # Job completion times
+    print("\nJob Completion Times:")
+
+    job_completion = {}
+
+    for operation in operations:
+        job_id = operation["job_id"]
+        end_time = operation["actual_end"]
+
+        if (
+            job_id not in job_completion
+            or end_time > job_completion[job_id]
+        ):
+            job_completion[job_id] = end_time
+
+    for job_id, completion_time in sorted(job_completion.items()):
+        print(
+            f"{job_id} : "
+            f"{completion_time}"
         )
 
 if __name__ == "__main__":
@@ -173,3 +283,5 @@ if __name__ == "__main__":
     env.run()
 
     print("\nSimulation completed.")
+
+    calculate_simulation_results()
