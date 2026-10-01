@@ -47,3 +47,15 @@ This repository contains the code for the Smart Job Shop Optimizer, a backend sy
 # Ensure you are in the project root
 ./backend/venv/Scripts/python backend/app/simulation/factory_simulation.py
 ```
+
+**Gantt Chart Visualization (Matplotlib)**:
+```bash
+# Ensure you are in the project root
+./backend/venv/Scripts/python backend/app/simulation/gantt_visualization.py
+```
+
+**Result Analysis**:
+```bash
+# Ensure you are in the project root
+./backend/venv/Scripts/python backend/app/simulation/result_analysis.py
+```
