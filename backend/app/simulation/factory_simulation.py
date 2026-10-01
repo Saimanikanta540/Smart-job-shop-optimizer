@@ -322,21 +322,56 @@ def calculate_simulation_results():
     print(f"Total Processing Time: {total_processing_time}")
     print(f"Total Waiting Time   : {total_waiting_time}")
 
-    # Machine utilization
-    print("\nMachine Utilization:")
+    # ==========================================
+    # CP-SAT vs SIMULATION VALIDATION
+    # ==========================================
 
-    for machine_id, busy_time in sorted(
-        simulation_results["machine_busy_time"].items()
+    cp_sat_makespan = max(
+        operation["end"]
+        for operation in schedule
+    )
+
+    print("\n========== CP-SAT vs SIMULATION ==========")
+
+    print(f"CP-SAT Makespan       : {cp_sat_makespan}")
+    print(f"Simulation Makespan   : {simulation_makespan}")
+    print(f"Makespan Difference   : {simulation_makespan - cp_sat_makespan}")
+
+    print(f"Planned Operations    : {len(schedule)}")
+    print(f"Completed Operations  : {completed_operations}")
+
+    if simulation_makespan == cp_sat_makespan:
+        print("✓ Makespan matches")
+    else:
+        print("✗ Makespan mismatch")
+
+    if len(schedule) == completed_operations:
+        print("✓ All operations completed")
+    else:
+        print("✗ Operation count mismatch")
+
+    if (
+        simulation_makespan == cp_sat_makespan
+        and len(schedule) == completed_operations
     ):
-        utilization = (
-            busy_time / simulation_makespan
-        ) * 100
+        print("\n✅ CP-SAT AND SIMULATION CONSISTENT")
+    else:
+        print("\n⚠️ CP-SAT AND SIMULATION DIFFER")
+        # Machine utilization
+        print("\nMachine Utilization:")
 
-        print(
-            f"{machine_id} : "
-            f"{utilization:.2f}% "
-            f"(Busy: {busy_time})"
-        )
+        for machine_id, busy_time in sorted(
+            simulation_results["machine_busy_time"].items()
+        ):
+            utilization = (
+                busy_time / simulation_makespan
+            ) * 100
+
+            print(
+                f"{machine_id} : "
+                f"{utilization:.2f}% "
+                f"(Busy: {busy_time})"
+            )
 
     # Job completion times
     print("\nJob Completion Times:")
