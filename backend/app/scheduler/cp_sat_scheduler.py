@@ -1,6 +1,6 @@
 from ortools.sat.python import cp_model
 
-from data_loader import load_data
+from backend.app.scheduler.data_loader import load_data
 
 # =========================================================
 # FACTORY CALENDAR
