@@ -290,26 +290,25 @@ def calculate_simulation_results():
         print("❌ No simulation results available.")
         return
 
-    # Total operations
+    # ==========================================
+    # BASIC SIMULATION RESULTS
+    # ==========================================
+
     total_operations = len(operations)
 
-    # Completed operations
     completed_operations = sum(
         1 for op in operations
         if op["actual_end"] is not None
     )
 
-    # Simulation makespan
     simulation_makespan = max(
         op["actual_end"] for op in operations
     )
 
-    # Total processing time
     total_processing_time = sum(
         op["processing_time"] for op in operations
     )
 
-    # Total waiting time
     total_waiting_time = sum(
         op["waiting_time"] for op in operations
     )
@@ -335,45 +334,64 @@ def calculate_simulation_results():
 
     print(f"CP-SAT Makespan       : {cp_sat_makespan}")
     print(f"Simulation Makespan   : {simulation_makespan}")
-    print(f"Makespan Difference   : {simulation_makespan - cp_sat_makespan}")
+    print(
+        f"Makespan Difference   : "
+        f"{simulation_makespan - cp_sat_makespan}"
+    )
 
     print(f"Planned Operations    : {len(schedule)}")
     print(f"Completed Operations  : {completed_operations}")
 
-    if simulation_makespan == cp_sat_makespan:
+    # ==========================================
+    # CONSISTENCY CHECK
+    # ==========================================
+
+    makespan_matches = (
+        simulation_makespan == cp_sat_makespan
+    )
+
+    operations_match = (
+        len(schedule) == completed_operations
+    )
+
+    if makespan_matches:
         print("✓ Makespan matches")
     else:
         print("✗ Makespan mismatch")
 
-    if len(schedule) == completed_operations:
+    if operations_match:
         print("✓ All operations completed")
     else:
         print("✗ Operation count mismatch")
 
-    if (
-        simulation_makespan == cp_sat_makespan
-        and len(schedule) == completed_operations
-    ):
+    if makespan_matches and operations_match:
         print("\n✅ CP-SAT AND SIMULATION CONSISTENT")
     else:
         print("\n⚠️ CP-SAT AND SIMULATION DIFFER")
-        # Machine utilization
-        print("\nMachine Utilization:")
 
-        for machine_id, busy_time in sorted(
-            simulation_results["machine_busy_time"].items()
-        ):
-            utilization = (
-                busy_time / simulation_makespan
-            ) * 100
+    # ==========================================
+    # MACHINE UTILIZATION
+    # ==========================================
 
-            print(
-                f"{machine_id} : "
-                f"{utilization:.2f}% "
-                f"(Busy: {busy_time})"
-            )
+    print("\nMachine Utilization:")
 
-    # Job completion times
+    for machine_id, busy_time in sorted(
+        simulation_results["machine_busy_time"].items()
+    ):
+        utilization = (
+            busy_time / simulation_makespan
+        ) * 100
+
+        print(
+            f"{machine_id} : "
+            f"{utilization:.2f}% "
+            f"(Busy: {busy_time})"
+        )
+
+    # ==========================================
+    # JOB COMPLETION TIMES
+    # ==========================================
+
     print("\nJob Completion Times:")
 
     job_completion = {}
@@ -388,7 +406,9 @@ def calculate_simulation_results():
         ):
             job_completion[job_id] = end_time
 
-    for job_id, completion_time in sorted(job_completion.items()):
+    for job_id, completion_time in sorted(
+        job_completion.items()
+    ):
         print(
             f"{job_id} : "
             f"{completion_time}"
