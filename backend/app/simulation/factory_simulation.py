@@ -4,6 +4,7 @@ import os
 import pandas as pd
 
 DISRUPTION_FILE = "data/sample/mobile/disruptions.csv"
+MAINTENANCE_FILE = "data/sample/mobile/maintenance.csv"
 
 # Add backend/app and scheduler to Python path
 APP_DIR = os.path.abspath(
@@ -35,7 +36,25 @@ def load_disruptions():
 
     return disruptions
 
+def load_maintenance():
+    maintenance = pd.read_csv(MAINTENANCE_FILE)
+
+    print("\n========== MAINTENANCE ==========")
+
+    for _, row in maintenance.iterrows():
+        print(
+            f"{row['machine_id']} "
+            f"maintenance from "
+            f"{row['start_time']} "
+            f"to "
+            f"{row['end_time']}"
+        )
+
+    return maintenance
+
 disruptions = load_disruptions()
+
+maintenance = load_maintenance()
 
 simulation_results = {
     "operations": [],
@@ -115,6 +134,53 @@ def get_machine_disruption(machine_id, current_time, duration, disruptions):
 
     return None
 
+def get_next_available_time(
+    current_time,
+    machine_id,
+    processing_time,
+    maintenance,
+    disruptions
+):
+    """
+    Find the earliest time when the operation can run completely
+    without overlapping maintenance or disruption windows.
+    """
+
+    start_time = current_time
+
+    while True:
+        end_time = start_time + processing_time
+
+        conflict_found = False
+
+        # Check maintenance
+        for _, row in maintenance.iterrows():
+            if row["machine_id"] == machine_id:
+                maintenance_start = row["start_time"]
+                maintenance_end = row["end_time"]
+
+                if start_time < maintenance_end and end_time > maintenance_start:
+                    start_time = maintenance_end
+                    conflict_found = True
+                    break
+
+        if conflict_found:
+            continue
+
+        # Check disruptions
+        for _, row in disruptions.iterrows():
+            if row["machine_id"] == machine_id:
+                disruption_start = row["start_time"]
+                disruption_end = row["end_time"]
+
+                if start_time < disruption_end and end_time > disruption_start:
+                    start_time = disruption_end
+                    conflict_found = True
+                    break
+
+        if not conflict_found:
+            return start_time
+    
 def run_scheduled_operation(
     env,
     machines,
@@ -123,6 +189,7 @@ def run_scheduled_operation(
     machine_id,
     scheduled_start,
     duration,
+    maintenance,
     disruptions
 ):
     # Wait until the scheduled start time
@@ -138,6 +205,22 @@ def run_scheduled_operation(
 
     # Request machine
     request_time = env.now
+
+    available_time = get_next_available_time(
+    env.now,
+    machine_id,
+    duration,
+    maintenance,
+    disruptions
+    )
+
+    if available_time > env.now:
+        print(
+            f"Time {env.now}: {job_id}/{operation_id} "
+            f"delayed until {available_time} because {machine_id} is unavailable"
+        )
+
+        yield env.timeout(available_time - env.now)
 
     with machine.request() as request:
         yield request
@@ -195,6 +278,7 @@ def simulate_schedule(env, machines, schedule):
                 operation["machine_id"],
                 operation["start"],
                 operation["processing_time"],
+                maintenance,
                 disruptions
             )
         )
