@@ -1,6 +1,9 @@
 import simpy
 import sys
 import os
+import pandas as pd
+
+DISRUPTION_FILE = "data/sample/mobile/disruptions.csv"
 
 # Add backend/app and scheduler to Python path
 APP_DIR = os.path.abspath(
@@ -15,6 +18,24 @@ sys.path.insert(0, APP_DIR)
 sys.path.insert(0, SCHEDULER_DIR)
 
 from scheduler.cp_sat_scheduler import create_schedule
+
+def load_disruptions():
+    disruptions = pd.read_csv(DISRUPTION_FILE)
+
+    print("\n========== DISRUPTIONS ==========")
+
+    for _, disruption in disruptions.iterrows():
+        print(
+            f"{disruption['machine_id']} "
+            f"unavailable from "
+            f"{disruption['start_time']} "
+            f"to "
+            f"{disruption['end_time']}"
+        )
+
+    return disruptions
+
+disruptions = load_disruptions()
 
 simulation_results = {
     "operations": [],
@@ -72,7 +93,28 @@ def process_operation(env, machines, job_id, operation_id, machine_id, duration)
         print(
             f"Time {env.now}: "
             f"{job_id}/{operation_id} finished on {machine_id}"
-        )   
+        ) 
+
+def get_machine_disruption(machine_id, current_time, duration, disruptions):
+
+    for _, disruption in disruptions.iterrows():
+
+        if disruption["machine_id"] != machine_id:
+            continue
+
+        disruption_start = disruption["start_time"]
+        disruption_end = disruption["end_time"]
+
+        operation_end = current_time + duration
+
+        if (
+            current_time < disruption_end
+            and operation_end > disruption_start
+        ):
+            return disruption_start, disruption_end
+
+    return None
+
 def run_scheduled_operation(
     env,
     machines,
@@ -80,7 +122,8 @@ def run_scheduled_operation(
     operation_id,
     machine_id,
     scheduled_start,
-    duration
+    duration,
+    disruptions
 ):
     # Wait until the scheduled start time
     if env.now < scheduled_start:
@@ -143,7 +186,6 @@ def simulate_schedule(env, machines, schedule):
     """
 
     for operation in schedule:
-
         env.process(
             run_scheduled_operation(
                 env,
@@ -152,7 +194,8 @@ def simulate_schedule(env, machines, schedule):
                 operation["operation_id"],
                 operation["machine_id"],
                 operation["start"],
-                operation["processing_time"]
+                operation["processing_time"],
+                disruptions
             )
         )
     
