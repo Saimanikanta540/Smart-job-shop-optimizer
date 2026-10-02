@@ -131,8 +131,6 @@ def plot_machine_utilization(machine_utilization):
 
     plt.tight_layout()
 
-    plt.show()
-
 
 # =============================================================
 # JOB COMPLETION VISUALIZATION
@@ -178,8 +176,6 @@ def plot_job_completion(job_completion):
         )
 
     plt.tight_layout()
-
-    plt.show()
 
 
 # =============================================================
@@ -228,8 +224,6 @@ def plot_summary(total_operations, makespan):
         )
 
     plt.tight_layout()
-
-    plt.show()
 
 
 # =============================================================
@@ -304,3 +298,5 @@ if __name__ == "__main__":
         print(
             "\n✅ RESULT VISUALIZATION COMPLETED"
         )
+
+        plt.show()
