@@ -36,26 +36,39 @@ This repository contains the code for the Smart Job Shop Optimizer, a backend sy
 
 ### Running Modules Independently
 
+Ensure you are in the project root directory (`d:\Smart-job-shop-optimizer`) before running these scripts. The scripts are now configured to resolve their own imports automatically.
+
 **CP-SAT Scheduler**:
 ```bash
-# Ensure you are in the project root so it can find data/sample/
-./backend/venv/Scripts/python backend/app/scheduler/cp_sat_scheduler.py
+python backend/app/scheduler/cp_sat_scheduler.py
 ```
 
 **Factory Simulation (SimPy)**:
 ```bash
-# Ensure you are in the project root
-./backend/venv/Scripts/python backend/app/simulation/factory_simulation.py
+python backend/app/simulation/factory_simulation.py
 ```
 
 **Gantt Chart Visualization (Matplotlib)**:
 ```bash
-# Ensure you are in the project root
-./backend/venv/Scripts/python backend/app/simulation/gantt_visualization.py
+python backend/app/simulation/gantt_visualization.py
 ```
 
-**Result Analysis**:
+**Result Analysis (CLI Text Output)**:
 ```bash
-# Ensure you are in the project root
-./backend/venv/Scripts/python backend/app/simulation/result_analysis.py
+python backend/app/simulation/result_analysis.py
+```
+
+**Result Visualization (Charts)**:
+```bash
+python backend/app/simulation/result_visualization.py
+```
+
+**Bottleneck Analysis**:
+```bash
+python backend/app/simulation/bottleneck_analysis.py
+```
+
+**Scenario Analysis (What-If Scenarios)**:
+```bash
+python backend/app/simulation/scenario_analysis.py
 ```
